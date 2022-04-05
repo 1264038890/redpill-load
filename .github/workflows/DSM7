@@ -1,0 +1,43 @@
+ release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: edit ds918 config
+        env:
+          DS918P_PID: ${{ secrets.DS918P_PID }}
+          DS918P_VID: ${{ secrets.DS918P_VID }}
+          DS918P_SN: ${{ secrets.DS918P_SN }}
+          DS918P_MAC: ${{ secrets.DS918P_MAC }}
+          #DS918P_MAC2: ${{ secrets.DS918P_MAC2 }}
+        run: |
+          chmod +x redpill_tool_chain.sh
+          sed -i "s/1234XXX123/${DS918P_SN}/g" apollolake_user_config.json
+          sed -i "s/XXYYXXYYXXYY/${DS918P_MAC}/g" apollolake_user_config.json
+          sed -i "s/0x46f4/${DS918P_VID}/g" apollolake_user_config.json
+          sed -i "s/0x0001/${DS918P_PID}/g" apollolake_user_config.json
+      - name: build ds918 7.1.0
+        run: |
+          ./redpill_tool_chain.sh build apollolake-7.1.0-42621
+      - name: create ds918 7.1.0 image
+        run: |
+          ./redpill_tool_chain.sh auto apollolake-7.1.0-42621
+
+      - name : Upload packages
+        uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: firmware
+          path: images/*.img
